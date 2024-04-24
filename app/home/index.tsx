@@ -115,7 +115,9 @@ const Home = () => {
     setFilters({});
     page = 1;
     setImages([]);
-    let params = { page: page };
+    let params: { page: number; category?: string; q?: string } = {
+      page: page,
+    };
     if (activeCategory) {
       params = { page: page, category: activeCategory };
     }
@@ -230,7 +232,16 @@ const Home = () => {
               return (
                 <View key={filter} style={styles.filter}>
                   <Text style={styles.filterText}>
-                    {capitalize(filter)}: {filters[filter]}
+                    {filter === "colors" ? (
+                      <View
+                        style={[
+                          styles.color,
+                          { backgroundColor: filters[filter] },
+                        ]}
+                      />
+                    ) : (
+                      capitalize(filter) + ": " + filters[filter]
+                    )}
                   </Text>
                   <Pressable
                     onPress={() => {
@@ -328,6 +339,12 @@ const styles = StyleSheet.create({
   filterText: {
     color: theme.colors.neutral(0.9),
     marginRight: 5,
+  },
+  color: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1,
   },
 });
 

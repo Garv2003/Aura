@@ -15,18 +15,17 @@ import { Image } from "expo-image";
 import { theme } from "@/constants/theme";
 import { Octicons } from "@expo/vector-icons";
 import { hp } from "@/helpers/common";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import * as MediaLibrary from "expo-media-library";
 import Toast from "react-native-toast-message";
-import { rest } from "lodash";
 
 const ImageScreen = () => {
   const router = useRouter();
   const item = useLocalSearchParams();
   const [status, setStatus] = useState("loading");
 
-  const fileName = item?.webformatURL.split("/").pop();
+  const fileName = (item?.webformatURL as string)?.split("/") as string[];
 
   const imageUrl = item?.webformatURL;
 
@@ -43,7 +42,8 @@ const ImageScreen = () => {
         height: 100,
       };
     }
-    const aspectRatio: any = item?.imageWidth / item?.imageHeight;
+    const aspectRatio: any =
+      Number(item?.imageWidth) / Number(item?.imageHeight);
     const maxWidth = Platform.OS === "web" ? wp(50) : wp(92);
 
     let calculatedHeight = maxWidth / aspectRatio;
@@ -58,15 +58,36 @@ const ImageScreen = () => {
       height: calculatedHeight,
     };
   };
-
+  const requestPermissions = async () => {
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    if (status !== "granted") {
+      showToast({
+        message: "Permission to access media library is required",
+        type: "error",
+      });
+      return false;
+    }
+    return true;
+  };
   const handelDownloadFile = async () => {
     try {
-      const { uri } = await FileSystem.downloadAsync(imageUrl, filePath);
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) {
+        return null;
+      }
+      const { uri } = await FileSystem.downloadAsync(
+        imageUrl as string,
+        filePath
+      );
       setStatus("");
       console.log("Finished downloading to ", uri);
+      return uri;
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to download image");
+      showToast({
+        message: "Failed to download",
+        type: "error",
+      });
       return null;
     }
   };
@@ -74,6 +95,18 @@ const ImageScreen = () => {
   const handelDownload = async () => {
     setStatus("downloading");
     let url = await handelDownloadFile();
+    if (!url) {
+      setStatus("");
+      return;
+    }
+    const asset = await MediaLibrary.createAssetAsync(url);
+    const album = await MediaLibrary.getAlbumAsync("Download");
+    if (album === null) {
+      await MediaLibrary.createAlbumAsync("Download", asset, false);
+    } else {
+      await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+    }
+
     if (url) {
       showToast({
         message: "Downloaded successfully",
@@ -85,6 +118,13 @@ const ImageScreen = () => {
 
   const handelShare = async () => {
     setStatus("sharing");
+
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      alert("Uh oh, sharing isn't available on your platform");
+      return;
+    }
+
     let uri = await handelDownloadFile();
     if (uri) {
       await Sharing.shareAsync(uri);
@@ -107,8 +147,8 @@ const ImageScreen = () => {
 
   const config = {
     success: ({ text1, props, ...rest }: any) => (
-      <View style={{ height: 60, width: "100%", backgroundColor: "green" }}>
-        <Text>{text1}</Text>
+      <View style={styles.toast}>
+        <Text style={styles.toastText}>{text1}</Text>
       </View>
     ),
     error: ({ text1, props, ...rest }: any) => (
@@ -134,12 +174,12 @@ const ImageScreen = () => {
         />
       </View>
       <View style={styles.buttons}>
-        <Animated.View entering={FadeInDown.springify()}>
+        <View>
           <Pressable style={styles.button} onPress={() => router.back()}>
             <Octicons name="x" size={24} color="#fff" />
           </Pressable>
-        </Animated.View>
-        <Animated.View entering={FadeInDown.springify().delay(100)}>
+        </View>
+        <View>
           {status === "downloading" ? (
             <View style={styles.button}>
               <ActivityIndicator size="small" color="#fff" />
@@ -149,8 +189,8 @@ const ImageScreen = () => {
               <Octicons name="download" size={24} color="#fff" />
             </Pressable>
           )}
-        </Animated.View>
-        <Animated.View entering={FadeInDown.springify().delay(200)}>
+        </View>
+        <View>
           {status === "sharing" ? (
             <View style={styles.button}>
               <ActivityIndicator size="small" color="#fff" />
@@ -160,9 +200,14 @@ const ImageScreen = () => {
               <Octicons name="share" size={24} color="#fff" />
             </Pressable>
           )}
-        </Animated.View>
+        </View>
       </View>
-      <Toast config={config} visibilityTime={2000} autoHide={true} />
+      <Toast
+        config={config}
+        visibilityTime={2000}
+        autoHide={true}
+        position="bottom"
+      />
     </BlurView>
   );
 };
@@ -203,6 +248,19 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 10,
     borderCurve: "continuous",
+  },
+  toast: {
+    backgroundColor: "rgba(255,255,255,0.15)",
+    padding: 15,
+    paddingHorizontal: 30,
+    borderRadius: theme.radius.xl,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  toastText: {
+    fontSize: hp(2),
+    fontWeight: "bold",
+    color: "#fff",
   },
 });
 

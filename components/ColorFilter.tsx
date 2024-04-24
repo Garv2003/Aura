@@ -16,7 +16,6 @@ const ColorFilter = ({ data, filters, setFilters, filterName }: any) => {
           let isSelected = filters[filterName] === item;
           let borderColor = isSelected ? theme.colors.neutral(0.4) : "white";
 
-          console.log(borderColor, isSelected);
           return (
             <Pressable key={index} onPress={() => onSelect(item)}>
               <View style={[styles.colorWrapper, { borderColor }]}>
@@ -25,6 +24,11 @@ const ColorFilter = ({ data, filters, setFilters, filterName }: any) => {
                     styles.color,
                     {
                       backgroundColor: item,
+                    },
+                    {
+                      borderColor: isSelected
+                        ? theme.colors.neutral(0)
+                        : "black",
                     },
                   ]}
                 />
@@ -43,7 +47,7 @@ const styles = {
     gap: 8,
   },
   colorWrapper: {
-    width: 40,
+    width: 35,
     height: 30,
     borderRadius: theme.radius.sm - 3,
     borderCurve: "continuous",
@@ -53,7 +57,7 @@ const styles = {
     height: "100%",
     padding: 3,
     borderRadius: theme.radius.sm,
-    borderWidth: 2,
+    borderWidth: 3,
     margin: 2,
     borderCurve: "continuous",
   },
